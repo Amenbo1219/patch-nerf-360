@@ -1,0 +1,12 @@
+expname = Sp-TABLLE-def-omni2
+basedir = ./table-ratechange/
+datadir = ./data/2024-11-TABLLE/points
+dataset_type = synth360
+lrate = 5e-4
+N_rand = 1600
+N_samples = 64
+N_importance = 128
+
+raw_noise_std = 1e0
+
+no_batching = False

@@ -1,0 +1,12 @@
+expname = Sp-TABLLE-Patch-reduce 
+basedir = table-ratechange
+datadir = ./data/2024-11-TABLLE/points
+dataset_type = synth360
+
+N_rand = 1024
+N_samples = 32
+N_importance = 64
+
+raw_noise_std = 1e0
+
+no_batching = True
