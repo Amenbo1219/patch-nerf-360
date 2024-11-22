@@ -595,8 +595,8 @@ def train():
     
     if args.dataset_type == 'synth360':
         print(args.datadir)
-        train_dataload=load_360(data_dir=args.datadir,mode='train',bds='sp',patch=True,N_rand=N_rand)
-        test_dataload=load_360(data_dir=args.datadir,mode='test',bds='sp',patch=True)
+        train_dataload=load_360(data_dir=args.datadir,mode='train',bds='sp',patch=False,N_rand=N_rand)
+        test_dataload=load_360(data_dir=args.datadir,mode='test',bds='sp',patch=False)
         hwf = train_dataload.rtn_hwf()
         # images, poses, bds, render_poses, i_test= load_synth360_data(args.datadir)
         # print(i_test)
@@ -829,16 +829,8 @@ def train():
 
         # if i%args.i_video==0 and i > 0:
         # Turn on testing mode
-        # images = []
-        # poses = [ ]
-        # for i, data in enumerate(test_dataload):
-        #     pose, image, ray_origins, ray_directions = data
-        #     images.append(image)
-        #     poses.append(pose)
-        # images = torch.Tensor(np.array(images)).to(device)
-        # poses = torch.Tensor(np.array(poses)).to(device)
         # with torch.no_grad():
-        #     rgbs, disps = render_path(poses, hwf, K, args.chunk, render_kwargs_test)
+        #     rgbs, disps = render_path(render_poses, hwf, K, args.chunk, render_kwargs_test)
         # print('Done, saving', rgbs.shape, disps.shape)
         # moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
         # imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
@@ -848,7 +840,7 @@ def train():
         # save_tensor_to_npz(batch_rays,f'{basedir}/{expname}/{i}_batch_rays')
         # save_tensor_to_npz(coords,f'{basedir}/{expname}/{i}_coords')
         # save_tensor_to_npz(target_s,f'{basedir}/{expname}/{i}_target_s')
-        # print(f"extras:{extras}")
+        print(f"extras:{extras}")
         # save_tensor_to_npz(extras['raw'],f'{basedir}/{expname}/{i}_extras')
         # save_tensor_to_npz(extras,f'{basedir}/{expname}/{i}_extras')
         # save_tensor_to_npz(rgb,f'{basedir}/{expname}/{i}_rgb')

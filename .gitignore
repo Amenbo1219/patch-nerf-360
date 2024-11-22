@@ -14,3 +14,6 @@ drc_config/*
 configs/*
 dir/*
 table-ratechange/*
+norm/*
+__pycache__/*
+data

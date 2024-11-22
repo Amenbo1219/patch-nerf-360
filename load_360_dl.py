@@ -31,12 +31,9 @@ class load_360(Dataset):
             for line in f.readlines():
                 line = line.rstrip()
                 line = line.split(" ")
-                # print(line[0]+".png", len(line))
                 pose = self.transform_pose(line)
                 img_list.append(line[0]+".png")
-                # print(pose)
                 self.poses[line[0]]=pose
-        #print(self.poses)
         H,W,_ = cv2.imread(os.path.join(self.img_fpath, line[0]+".png")).shape
         self.W = W
         self.H = H
@@ -102,29 +99,39 @@ class load_360(Dataset):
         patches = patches.reshape((4*3, w//patch_w, h//patch_h, c))
         return patches
     def random_patch(self,img,ray_o,ray_d):
-      num_elements = img.shape[0]
-      if self.N_rand >= num_elements:
-          return img,ray_o,ray_d
-      random_indices = random.sample(range(num_elements), self.N_rand)
-      img = img[random_indices]
-      ray_o = ray_o[random_indices]
-      ray_d = ray_d[random_indices]
-      return img,ray_o,ray_d
+        # num_elements = img.shape[0]
+        img = img.reshape(-1, 3)
+        ray_o = ray_o.reshape(-1, 3)
+        ray_d = ray_d.reshape(-1, 3)
+        indices = np.random.randint(0, img.shape[0], size=self.N_rand)
+        if self.N_rand >= img.shape[1] * img.shape[0]:
+            return img,ray_o,ray_d
+        img = img[indices,:]
+        ray_o = ray_o[indices]
+        ray_d = ray_d[indices]
+        return img,ray_o,ray_d
     def __getitem__(self, idx):
         img_path,patch_idx = self.image_files[idx]
-        # print(img_path)
         img = cv2.imread(img_path)/255.
         c2w = self.poses[img_path[-7:-4]]
         ray_o,ray_d =self.getray(H=img.shape[0],W=img.shape[1],c2w=c2w,K=None)
-        if self.patch and  self.mode == 'train':
-            patch_img = self.path_split(img)
-            patch_ray_o= self.path_split(ray_o)
-            patch_ray_d= self.path_split(ray_d)
-            patch_img,patch_ray_o,patch_ray_d=self.random_patch(patch_img[patch_idx[0],patch_idx[1]],patch_ray_o[patch_idx[0],patch_idx[1]],patch_ray_d[patch_idx[0],patch_idx[1]])
-            rtn_img =  patch_img
-            rtn_ray_o =  patch_ray_o
-            rtn_ray_d = patch_ray_d
-
+        if self.mode == 'train':
+            if self.patch and  self.mode == 'train':
+                patch_img = self.path_split(img)
+                patch_ray_o= self.path_split(ray_o)
+                patch_ray_d= self.path_split(ray_d)
+                patch_img,patch_ray_o,patch_ray_d=self.random_patch(patch_img[patch_idx[0],patch_idx[1]],patch_ray_o[patch_idx[0],patch_idx[1]],patch_ray_d[patch_idx[0],patch_idx[1]])
+                rtn_img =  patch_img
+                rtn_ray_o =  patch_ray_o
+                rtn_ray_d = patch_ray_d
+            else :
+                # patch_img = self.path_split(img)
+                # patch_ray_o= self.path_split(ray_o)
+                # patch_ray_d= self.path_split(ray_d)
+                patch_img,patch_ray_o,patch_ray_d=self.random_patch(img,ray_o,ray_d)
+                rtn_img =  patch_img
+                rtn_ray_o =  patch_ray_o
+                rtn_ray_d = patch_ray_d
         else :
             rtn_img = img
             rtn_ray_o = []
