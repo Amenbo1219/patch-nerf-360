@@ -1,0 +1,16 @@
+**/.ipynb_checkpoints
+**/__pycache__
+*.png
+*.mp4
+*.npy
+*.npz
+*.dae
+data/*
+logs/*
+log/*
+out/*
+ex_config/*
+drc_config/*
+configs/*
+dir/*
+table-ratechange/*
