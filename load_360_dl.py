@@ -9,7 +9,7 @@ import random
 from run_nerf_helpers_new import get_rays_np_sp,get_rays_np
 from run_nerf_helpers_new import get_rays_np_roll,get_rays_roll
 class load_360(Dataset):
-    def __init__(self, data_dir, W=6720,H=3360,mode="train",bds='sp',patch=True,transform=None,N_rand=1024):
+    def __init__(self, data_dir, W=6720,H=3360,mode="train",bds='sp',patch=True,transform=None,N_rand=1024,patch_num=[3,4]):
         self.patch = patch
         self.root_dir = ""
         self.transform = transform
@@ -39,9 +39,9 @@ class load_360(Dataset):
         self.H = H
         self.image_files = []
         if self.patch and mode=="train":
-            self.patch_size = [3,4]
-            patch_n = self.patch_size[0]
-            patch_m = self.patch_size[1]
+            self.patch_num= patch_num
+            patch_n = self.patch_num[0]
+            patch_m = self.patch_num[1]
             for f in img_list:
                 for n in range(patch_n):
                     for m in range(patch_m):
@@ -51,9 +51,6 @@ class load_360(Dataset):
            for f in img_list:
             self.datanum+=1
             self.image_files.append([os.path.join(self.img_fpath+f),[]])
-            # self.image_files = [
-            #     f for f in os.listdir(self.img_fpath) if f.lower().endswith(('.png', '.jpg', '.jpeg'))
-            # ]
         if bds == 'sp':
             self.getray = get_rays_np_sp
         else:
@@ -86,20 +83,28 @@ class load_360(Dataset):
         return transform_pose
 
     def __len__(self):
-        return len(self.image_files)
+        return self.datanum
     def path_split(self, img):
-        h, w, c = img.shape
-        patch_h, patch_w = self.patch_size
-        patches = []
-        for i in range(0, h, h//patch_h):
-            for j in range(0, w, w//patch_w):
-                patch = img[i:i+h//patch_h, j:j+w//patch_w, :]
-                patches.append(patch)
-        patches = np.array(patches)
-        patches = patches.reshape((4*3, w//patch_w, h//patch_h, c))
+        h, w, c = img.shape  
+        img = torch.from_numpy(img.astype(np.float32)).clone()
+        patch_h, patch_w = self.patch_num
+
+        patch_size_h = h // patch_h
+        patch_size_w = w // patch_w
+
+        
+        img = img.permute(2, 0, 1) # [H, W, C] -> [C, H, W] 
+
+        # Patch-Split 
+        patches = img.unfold(1, patch_size_h, patch_size_h).unfold(2, patch_size_w, patch_size_w) #[C,H,W] -> [C, patch_h, patch_w, patch_size_h, patch_size_w]
+
+        patches = patches.permute(1, 2, 3, 4, 0) # [C, patch_h, patch_w, patch_size_h, patch_size_w] -> [patch_h, patch_w, patch_size_h, patch_size_w, C] 
+
+        patches = patches.to('cpu').detach().numpy().copy()
+        # PATCHES = patches
         return patches
+
     def random_patch(self,img,ray_o,ray_d):
-        # num_elements = img.shape[0]
         img = img.reshape(-1, 3)
         ray_o = ray_o.reshape(-1, 3)
         ray_d = ray_d.reshape(-1, 3)
@@ -112,7 +117,8 @@ class load_360(Dataset):
         return img,ray_o,ray_d
     def __getitem__(self, idx):
         img_path,patch_idx = self.image_files[idx]
-        img = cv2.imread(img_path)/255.
+        img = cv2.imread(img_path)
+        img = np.array(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)/255.,dtype=np.float32)
         c2w = self.poses[img_path[-7:-4]]
         ray_o,ray_d =self.getray(H=img.shape[0],W=img.shape[1],c2w=c2w,K=None)
         if self.mode == 'train':
@@ -125,9 +131,6 @@ class load_360(Dataset):
                 rtn_ray_o =  patch_ray_o
                 rtn_ray_d = patch_ray_d
             else :
-                # patch_img = self.path_split(img)
-                # patch_ray_o= self.path_split(ray_o)
-                # patch_ray_d= self.path_split(ray_d)
                 patch_img,patch_ray_o,patch_ray_d=self.random_patch(img,ray_o,ray_d)
                 rtn_img =  patch_img
                 rtn_ray_o =  patch_ray_o

@@ -758,18 +758,22 @@ def train():
 
     # N_iters = 200000 + 1
     # N_iters = 100000 + 1
-    N_iters = 1000 + 1
-
+    N_iters = 10000000 + 1
+    N_Epoch = N_iters // N_rand
+    
     print('Begin')
     print('TRAIN views are', i_train)
     print('TEST views are', i_test)
     print('VAL views are', i_val)
+    print("N_Epoch",N_Epoch)
 
     # Summary writers
     # writer = SummaryWriter(os.path.join(basedir, 'summaries', expname))
     dataloader = torch.utils.data.DataLoader(train_dataload, batch_size=1,generator=torch.Generator(device))
     start = start + 1
-    for i in trange(start, N_iters):
+    # Num_iterte= 0
+
+    for i in trange(start, N_iters,N_rand):
         for t,data in tqdm(enumerate(dataloader)):
             time0 = time.time()
             pose, image, rays_o, rays_d = data
@@ -817,20 +821,29 @@ def train():
             #####           end            #####
             
         # Rest is logging
-        # if i%args.i_weights==0:
-        path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
-        torch.save({
-            'global_step': global_step,
-            'network_fn_state_dict': render_kwargs_train['network_fn'].state_dict(),
-            'network_fine_state_dict': render_kwargs_train['network_fine'].state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, path)
-        print('Saved checkpoints at', path)
+     # Rest is logging
+        if i%args.i_weights==0:
+            path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
+            torch.save({
+                'global_step': global_step,
+                'network_fn_state_dict': render_kwargs_train['network_fn'].state_dict(),
+                'network_fine_state_dict': render_kwargs_train['network_fine'].state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, path)
+            print('Saved checkpoints at', path)
 
         # if i%args.i_video==0 and i > 0:
         # Turn on testing mode
+        # images = []
+        # poses = [ ]
+        # for i, data in enumerate(test_dataload):
+        #     pose, image, ray_origins, ray_directions = data
+        #     images.append(image)
+        #     poses.append(pose)
+        # images = torch.Tensor(np.array(images)).to(device)
+        # poses = torch.Tensor(np.array(poses)).to(device)
         # with torch.no_grad():
-        #     rgbs, disps = render_path(render_poses, hwf, K, args.chunk, render_kwargs_test)
+        #     rgbs, disps = render_path(poses, hwf, K, args.chunk, render_kwargs_test)
         # print('Done, saving', rgbs.shape, disps.shape)
         # moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
         # imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
@@ -840,7 +853,7 @@ def train():
         # save_tensor_to_npz(batch_rays,f'{basedir}/{expname}/{i}_batch_rays')
         # save_tensor_to_npz(coords,f'{basedir}/{expname}/{i}_coords')
         # save_tensor_to_npz(target_s,f'{basedir}/{expname}/{i}_target_s')
-        print(f"extras:{extras}")
+        # print(f"extras:{extras}")
         # save_tensor_to_npz(extras['raw'],f'{basedir}/{expname}/{i}_extras')
         # save_tensor_to_npz(extras,f'{basedir}/{expname}/{i}_extras')
         # save_tensor_to_npz(rgb,f'{basedir}/{expname}/{i}_rgb')
@@ -852,21 +865,21 @@ def train():
         #     render_kwargs_test['c2w_staticcam'] = None
         #     imageio.mimwrite(moviebase + 'rgb_still.mp4', to8b(rgbs_still), fps=30, quality=8)
 
-        # if i%args.i_testset==0 and i > 0:
-        poses = []
-        images = []
-        for i, data in enumerate(test_dataload):
-            pose, image, ray_origins, ray_directions = data
-            images.append(image)
-            poses.append(pose)
-        images = torch.Tensor(np.array(images)).to(device)
-        poses = torch.Tensor(np.array(poses)).to(device)
-        testsavedir = os.path.join(basedir, expname, 'testset_{:06d}'.format(i))
-        os.makedirs(testsavedir, exist_ok=True)
-        print('test poses shape', poses.shape)
-        with torch.no_grad():
-            render_path(poses, hwf, K, args.chunk, render_kwargs_test, gt_imgs=images, savedir=testsavedir)
-        print('Saved test set')
+        if i%args.i_testset==0 and i > 0:
+            poses = []
+            images = []
+            for i, data in enumerate(test_dataload):
+                pose, image, ray_origins, ray_directions = data
+                images.append(image)
+                poses.append(pose)
+            images = torch.Tensor(np.array(images)).to(device)
+            poses = torch.Tensor(np.array(poses)).to(device)
+            testsavedir = os.path.join(basedir, expname, 'testset_{:06d}'.format(i))
+            os.makedirs(testsavedir, exist_ok=True)
+            print('test poses shape', poses.shape)
+            with torch.no_grad():
+                render_path(poses, hwf, K, args.chunk, render_kwargs_test, gt_imgs=images, savedir=testsavedir)
+            print('Saved test set')
 
 
     
@@ -914,6 +927,7 @@ def train():
                         tf.contrib.summary.image('z_std', extras['z_std'][tf.newaxis,...,tf.newaxis])
             """
         global_step += 1
+        # N_epochs +=1 
 
 
 if __name__=='__main__':

@@ -531,7 +531,8 @@ def config_parser():
                         help='set for spherical 360 scenes')
     parser.add_argument("--llffhold", type=int, default=8, 
                         help='will take every 1/N images as LLFF test set, paper uses 8')
-
+    parser.add_argument("--patch_num", type=str, default="4,3",
+                        help='patch number for each image,default is [4x3]')
     # logging/saving options
     parser.add_argument("--i_print",   type=int, default=1, 
                         help='frequency of console printout and metric loggin')
@@ -592,10 +593,13 @@ def train():
         # print('NEAR FAR', near, far)
     N_rand = args.N_rand
     use_batching = not args.no_batching # defaults is no_batching=True(use_batching=False)
-    
+    if len(args.patch_num) >=2:
+        patch_num = args.patch_num.split(',')
+        patch_num = [int(patch_num[0]),int(patch_num[1])]
     if args.dataset_type == 'synth360':
         print(args.datadir)
-        train_dataload=load_360(data_dir=args.datadir,mode='train',bds='sp',patch=True,N_rand=N_rand)
+        print(patch_num)
+        train_dataload=load_360(data_dir=args.datadir,mode='train',bds='sp',patch=True,N_rand=N_rand,patch_num=patch_num)
         test_dataload=load_360(data_dir=args.datadir,mode='test',bds='sp',patch=True)
         hwf = train_dataload.rtn_hwf()
         # images, poses, bds, render_poses, i_test= load_synth360_data(args.datadir)
@@ -758,18 +762,20 @@ def train():
 
     # N_iters = 200000 + 1
     # N_iters = 100000 + 1
-    N_iters = 1000 + 1
-
+    N_iters = 10000000 + 1
+    N_Epoch = N_iters // N_rand
+    
     print('Begin')
     print('TRAIN views are', i_train)
     print('TEST views are', i_test)
     print('VAL views are', i_val)
-
+    print("N_Epoch",N_Epoch)
     # Summary writers
     # writer = SummaryWriter(os.path.join(basedir, 'summaries', expname))
     dataloader = torch.utils.data.DataLoader(train_dataload, batch_size=1,generator=torch.Generator(device))
     start = start + 1
-    for i in trange(start, N_iters):
+    Num_iterte= 0
+    for i in trange(start, N_iters,N_rand):
         for t,data in tqdm(enumerate(dataloader)):
             time0 = time.time()
             pose, image, rays_o, rays_d = data
@@ -783,7 +789,7 @@ def train():
             rgb, disp, acc, extras = render(H, W, K, chunk=args.chunk, rays=batch_rays,
                                                     verbose=i < 10, retraw=True,
                                                     **render_kwargs_train)
-            
+            Num_iterte += N_rand
 
             
             # print("ray_o",rays_o)
@@ -818,7 +824,7 @@ def train():
             
         # Rest is logging
         # if i%args.i_weights==0:
-        path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
+        path = os.path.join(basedir, expname, '{:06d}.tar'.format(Num_iterte))
         torch.save({
             'global_step': global_step,
             'network_fn_state_dict': render_kwargs_train['network_fn'].state_dict(),
@@ -860,26 +866,26 @@ def train():
         #     render_kwargs_test['c2w_staticcam'] = None
         #     imageio.mimwrite(moviebase + 'rgb_still.mp4', to8b(rgbs_still), fps=30, quality=8)
 
-        # if i%args.i_testset==0 and i > 0:
-        poses = []
-        images = []
-        for i, data in enumerate(test_dataload):
-            pose, image, ray_origins, ray_directions = data
-            images.append(image)
-            poses.append(pose)
-        images = torch.Tensor(np.array(images)).to(device)
-        poses = torch.Tensor(np.array(poses)).to(device)
-        testsavedir = os.path.join(basedir, expname, 'testset_{:06d}'.format(i))
-        os.makedirs(testsavedir, exist_ok=True)
-        print('test poses shape', poses.shape)
-        with torch.no_grad():
-            render_path(poses, hwf, K, args.chunk, render_kwargs_test, gt_imgs=images, savedir=testsavedir)
-        print('Saved test set')
+        if Num_iterte%args.i_testset==0 and Num_iterte > 0:
+            poses = []
+            images = []
+            for i, data in enumerate(test_dataload):
+                pose, image, ray_origins, ray_directions = data
+                images.append(image)
+                poses.append(pose)
+            images = torch.Tensor(np.array(images)).to(device)
+            poses = torch.Tensor(np.array(poses)).to(device)
+            testsavedir = os.path.join(basedir, expname, 'testset_{:06d}'.format(Num_iterte))
+            os.makedirs(testsavedir, exist_ok=True)
+            print('test poses shape', poses.shape)
+            with torch.no_grad():
+                render_path(poses, hwf, K, args.chunk, render_kwargs_test, gt_imgs=images, savedir=testsavedir)
+            print('Saved test set')
 
 
     
         # if i%args.i_print==0:
-        tqdm.write(f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}")
+        tqdm.write(f"[TRAIN] Iter: {Num_iterte} Loss: {loss.item()}  PSNR: {psnr.item()}")
         """
         # print(expname, i, psnr.detach(), loss.detach(), global_step.cpu().detach().numpy())
         print('iter time {:.05f}'.format(dt))

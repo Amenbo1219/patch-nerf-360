@@ -9,7 +9,6 @@ data/*
 logs/*
 log/*
 out/*
-ex_config/*
 drc_config/*
 configs/*
 dir/*
@@ -17,3 +16,5 @@ table-ratechange/*
 norm/*
 __pycache__/*
 data
+slice/
+ex_config/*
