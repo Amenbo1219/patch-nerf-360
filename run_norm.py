@@ -100,7 +100,7 @@ def render(H, W, K, chunk=1024*32, rays=None, c2w=None, ndc=True,
       acc_map: [batch_size]. Accumulated opacity (alpha) along a ray.
       extras: dict with everything returned by render_rays().
     """
-    if c2w is not None:
+    if c2w is not None and rays is None:
         # special case to render full image
         rays_o, rays_d = get_rays_sp(H, W, K, c2w)
     else:

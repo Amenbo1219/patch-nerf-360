@@ -100,7 +100,8 @@ def render(H, W, K, chunk=1024*32, rays=None, c2w=None, ndc=True,
       acc_map: [batch_size]. Accumulated opacity (alpha) along a ray.
       extras: dict with everything returned by render_rays().
     """
-    if c2w is not None:
+    # if c2w is not None:
+    if c2w is not None and rays is None:
         # special case to render full image
         rays_o, rays_d = get_rays_sp(H, W, K, c2w)
     else:
@@ -730,6 +731,8 @@ def train():
             if args.render_test:
                 # render_test switches to test poses
                 # images = images[i_test]
+                images = []
+                poses = []
                 for i, data in enumerate(test_dataload):
                     pose, image, ray_origins, ray_directions = data
                     images.append(image)
@@ -784,7 +787,6 @@ def train():
             target_s = image
             batch_rays = torch.Tensor(batch_rays).to(device)
             target_s = torch.Tensor(target_s).to(device)
-            # print(target_s.shape,batch_rays.shape)
             #####  Core optimization loop  #####
             rgb, disp, acc, extras = render(H, W, K, chunk=args.chunk, rays=batch_rays,
                                                     verbose=i < 10, retraw=True,
@@ -819,7 +821,7 @@ def train():
             ################################
 
             dt = time.time()-time0
-            # print(f"Step: {global_step}, Loss: {loss}, Time: {dt}")
+            print(f"Step: {global_step}, Loss: {loss}, Time: {dt}")
             #####           end            #####
             
         # Rest is logging
@@ -866,7 +868,7 @@ def train():
         #     render_kwargs_test['c2w_staticcam'] = None
         #     imageio.mimwrite(moviebase + 'rgb_still.mp4', to8b(rgbs_still), fps=30, quality=8)
 
-        if Num_iterte%args.i_testset==0 and Num_iterte > 0:
+        if Num_iterte%args.i_testset==0 and Num_iterte > 0 :
             poses = []
             images = []
             for i, data in enumerate(test_dataload):
