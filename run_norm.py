@@ -773,7 +773,7 @@ def train():
     start = start + 1
     # Num_iterte= 0
 
-    for i in trange(start, N_iters,N_rand):
+    for i in trange(start, N_iters):
         for t,data in tqdm(enumerate(dataloader)):
             time0 = time.time()
             pose, image, rays_o, rays_d = data
